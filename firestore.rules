@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Functions
+    function isSignedIn() { return request.auth != null; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    // Purchase Entity Rule
+    function isValidPurchase(data) {
+      return data.keys().hasAll(['userId', 'ebookId', 'status', 'purchaseDate', 'amount'])
+        && data.userId == request.auth.uid
+        && data.ebookId is string
+        && data.status in ['approved', 'pending', 'failed']
+        && data.amount is number;
+    }
+
+    match /purchases/{purchaseId} {
+      allow read: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidPurchase(incoming());
+      allow update: if isSignedIn() && isValidPurchase(incoming()) && incoming().userId == existing().userId;
+      allow delete: if false; 
+    }
+
+    // Download Entity Rule
+    function isValidDownload(data) {
+       return data.keys().hasAll(['userId', 'purchaseId', 'ebookId', 'downloadDate'])
+        && data.userId == request.auth.uid
+        && data.purchaseId is string
+        && data.ebookId is string;
+    }
+
+    match /downloads/{downloadId} {
+      allow read: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidDownload(incoming());
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}
