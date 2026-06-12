@@ -269,22 +269,6 @@ function Logo({ size = "md", withText = true, glow = false }: { size?: "sm" | "m
   );
 }
 
-// ============================================================
-// LOGO LARGE (para hero e brand showcase)
-// ============================================================
-function LogoLarge() {
-  return (
-    <div className="flex flex-col items-center relative">
-      <div className="absolute -z-10 w-[500px] h-[500px] rounded-full bg-gold-400/20 logo-glow blur-[120px]" aria-hidden="true" />
-      <Logo size="xl" withText={false} />
-      <div className="mt-8 font-bold tracking-[0.3em] text-center text-2xl md:text-4xl whitespace-nowrap">
-        <span className="text-gold-gradient">DO ZERO</span>
-        <span className="text-white"> AO </span>
-        <span className="text-gold-gradient">MILHÃO</span>
-      </div>
-    </div>
-  );
-}
 
 // ============================================================
 // CAPÍTULOS (importados de constants/product.ts)
@@ -1036,7 +1020,7 @@ function Footer() {
 // ============================================================
 // APP
 // ============================================================
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense } from "react";
 
 const SuccessPage = lazy(() => import("./pages/SuccessPage"));
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));

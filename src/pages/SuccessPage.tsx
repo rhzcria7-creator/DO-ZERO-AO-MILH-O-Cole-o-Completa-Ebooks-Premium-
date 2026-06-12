@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { PRODUCT } from "../constants/product";
 import { useAuth } from "../contexts/AuthContext";
-import { db, collection, setDoc, doc } from "../lib/firebase";
+import { db, setDoc, doc } from "../lib/firebase";
 
 export default function SuccessPage() {
   const { user, loading } = useAuth();

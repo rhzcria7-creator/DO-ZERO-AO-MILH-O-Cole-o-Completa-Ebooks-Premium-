@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { signInWithPopup, googleProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, auth } from '../lib/firebase';
 import { sendPasswordResetEmail } from 'firebase/auth';
 
