@@ -1,5 +1,5 @@
-import { app as backendApp, logger } from '../backend/src/server.ts';
-import { errorHandler } from '../backend/src/middleware/error-handler.ts';
+import { app as backendApp, logger } from '../backend/src/server.js';
+import { errorHandler } from '../backend/src/middleware/error-handler.js';
 
 // Catch-all error handler
 backendApp.use((req, res) => {
