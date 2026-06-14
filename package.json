@@ -10,10 +10,10 @@
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
-    "audit:fix": "node scripts/audit-deps.mjs"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.1",
     "clsx": "2.1.1",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
@@ -24,8 +24,6 @@
     "express-mongo-sanitize": "^2.2.0",
     "express-rate-limit": "^8.5.2",
     "express-validator": "^7.3.2",
-    "firebase": "^12.14.0",
-    "firebase-admin": "^14.0.0",
     "helmet": "^8.2.0",
     "hpp": "^0.2.3",
     "jsonwebtoken": "^9.0.3",

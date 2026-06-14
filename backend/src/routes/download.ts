@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { param, query, validationResult } from "express-validator";
+import { param, validationResult } from "express-validator";
 import { config } from "../config/env.js";
 import { logger } from "../server.js";
 import { getTokenService } from "../services/token.js";
@@ -12,7 +12,7 @@ import {
 } from "../services/database.js";
 import { eq, and, gt } from "drizzle-orm";
 import crypto from "crypto";
-import { adminStorage } from "../../../src/lib/firebase-admin";
+import { getSignedUrl } from "../services/storage.js";
 
 export const downloadRouter = Router();
 
@@ -64,7 +64,7 @@ function blockIP(ip: string): void {
 
 /**
  * GET /api/download/:token
- * Gera URL temporária do Firebase Storage.
+ * Gera URL temporária do Supabase Storage.
  */
 downloadRouter.get(
   "/:token",
@@ -88,7 +88,7 @@ downloadRouter.get(
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         logger.warn("Download attempt with invalid token format", { ip, tokenLength: token.length });
-        blockIP(ip); // Bloquear após formato inválido (possível ataque)
+        blockIP(ip);
         return res.status(400).json({ error: "Token inválido" });
       }
 
@@ -98,7 +98,7 @@ downloadRouter.get(
         return res.status(429).json({ error: "Limite de downloads excedido. Tente novamente em 1 hora." });
       }
 
-      // Verificar se token está na lista de revogados (consulta direta à tabela)
+      // Verificar se token está na lista de revogados
       const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
       const [revokedToken] = await db
         .select({ id: revokedTokens.id, reason: revokedTokens.reason })
@@ -126,10 +126,8 @@ downloadRouter.get(
           userAgent 
         });
         
-        // Log de auditoria
         await logAuditEvent("download.invalid_token", null, ip, userAgent, false, "Token inválido ou expirado");
         
-        // Bloquear IP após múltiplas tentativas falhas
         if (checkDownloadRateLimit(ip)) {
           blockIP(ip);
         }
@@ -163,7 +161,7 @@ downloadRouter.get(
         return res.status(403).json({ error: "Pagamento não confirmado" });
       }
 
-      // Verificar se e-mail hash corresponde (proteção contra uso em outra conta)
+      // Verificar se e-mail hash corresponde
       const emailHash = tokenService.hashEmail(purchase.email!);
       if (payload.emailHash !== emailHash) {
         logger.warn("Download attempt with mismatched email hash", { 
@@ -181,27 +179,18 @@ downloadRouter.get(
       await recordDownloadAttempt(purchase.id, token, ip, userAgent);
       await logAuditEvent("download.success", purchase.id, ip, userAgent, true);
 
-      // Gerar signed URL no Firebase Storage
-      const bucket = adminStorage.bucket();
-      const file = bucket.file("ebooks/dozeroaomilhao.pdf"); // Default name
-      
-      const [exists] = await file.exists();
-      if (!exists) {
-         logger.error("Download fail: ebook file not found in storage");
-         return res.status(404).json({ error: "Arquivo temporariamente indisponível. Entre em contato." });
-      }
+      // Gerar URL assinada no Supabase Storage
+      const signedUrl = await getSignedUrl("ebooks", "dozeroaomilhao.pdf", 15 * 60); // 15 minutos
 
-      const [url] = await file.getSignedUrl({
-         version: "v4",
-         action: "read",
-         expires: Date.now() + 15 * 60 * 1000, // 15 minutos
-      });
+      if (!signedUrl) {
+        logger.error("Download fail: could not generate signed URL");
+        return res.status(500).json({ error: "Arquivo temporariamente indisponível. Entre em contato." });
+      }
 
       logger.info("Generated signed URL for download", { purchaseId: purchase.id });
 
-      // Returns a redirect to start the download immediately, or return JSON
-      // If we redirect, the browser fetches it.
-      res.redirect(url);
+      // Redirect para o arquivo
+      res.redirect(signedUrl);
     } catch (error) {
       logger.error("Download error", { error, ip });
       next(error);

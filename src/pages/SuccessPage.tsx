@@ -12,9 +12,7 @@ type VerifyStatus = "loading" | "pending" | "success" | "error";
  * que por sua vez é acionado SOMENTE pelo webhook validado do
  * gateway de pagamento (Mercado Pago / Stripe).
  *
- * O front-end apenas consulta o status da sessão/compra. Caso a
- * página seja acessada sem `session_id` válido ou sem pagamento
- * confirmado, mostramos "pending" e instruímos o usuário a aguardar.
+ * O front-end apenas consulta o status da sessão/compra.
  */
 export default function SuccessPage() {
   const { user, loading } = useAuth();
@@ -25,7 +23,6 @@ export default function SuccessPage() {
     if (loading) return;
 
     if (!user) {
-      // Redireciona para login preservando o destino.
       const next = encodeURIComponent(window.location.pathname + window.location.search);
       window.location.href = `/login?next=${next}`;
       return;
@@ -62,15 +59,13 @@ export default function SuccessPage() {
         } else {
           setStatus("pending");
         }
-      } catch (err) {
+      } catch {
         if (!cancelled) setStatus("pending");
       }
     };
 
     verifyPayment();
 
-    // Polling leve: o webhook pode levar alguns segundos para
-    // processar o pagamento. Re-checa a cada 4s por até 1 minuto.
     const interval = window.setInterval(verifyPayment, 4000);
     const timeout = window.setTimeout(() => window.clearInterval(interval), 60000);
 
@@ -85,10 +80,10 @@ export default function SuccessPage() {
     <div className="min-h-screen bg-black text-white flex items-center justify-center px-6 radial-bg">
       <div className="noise" />
       <div className="relative max-w-2xl text-center w-full">
-        {(status === "loading" || status === "verifying") && (
+        {status === "loading" && (
           <div className="animate-pulse">
             <div className="w-16 h-16 mx-auto border-4 border-gold-400/20 border-t-gold-400 rounded-full animate-spin" />
-            <p className="mt-6 text-white/60">Confirmando seu pagamento e liberando acesso...</p>
+            <p className="mt-6 text-white/60">Confirmando seu pagamento...</p>
           </div>
         )}
 
@@ -107,9 +102,7 @@ export default function SuccessPage() {
               Estamos <span className="text-gold-gradient italic">confirmando...</span>
             </h1>
             <p className="mt-6 text-lg text-white/70 max-w-lg mx-auto leading-relaxed">
-              O gateway de pagamento ainda está processando a transação. Isso leva
-              normalmente alguns segundos. Você receberá um e-mail e o acesso será
-              liberado automaticamente assim que confirmarmos.
+              O pagamento ainda está sendo processado. Assim que confirmarmos, o ebook será enviado para seu e-mail.
             </p>
             <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
               <button
@@ -131,25 +124,19 @@ export default function SuccessPage() {
         {status === "success" && (
           <>
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gold-400/10 border-2 border-gold-400 mb-8 glow-pulse">
-              <svg
-                className="w-10 h-10 text-gold-400"
-                fill="none" stroke="currentColor" viewBox="0 0 24 24"
-              >
+              <svg className="w-10 h-10 text-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-
             <span className="text-xs tracking-[0.3em] uppercase text-gold-400">
               Acesso liberado
             </span>
             <h1 className="mt-3 font-display text-4xl md:text-5xl lg:text-6xl font-light leading-[1.05]">
               Pagamento <span className="text-gold-gradient italic">confirmado.</span>
             </h1>
-
             <p className="mt-6 text-lg text-white/70 max-w-lg mx-auto leading-relaxed">
               Bem-vindo à jornada. Seu acesso ao <span className="text-white">{PRODUCT.fullName}</span> já está liberado no seu painel.
             </p>
-
             <div className="mt-10">
               <a
                 href="/dashboard"
@@ -163,7 +150,6 @@ export default function SuccessPage() {
                 Acessar Área do Cliente
               </a>
             </div>
-
             <div className="mt-6 space-y-3">
               <p className="text-xs text-white/50">
                 Precisa de ajuda? <a href="mailto:rhz.cria.7@gmail.com" className="text-gold-400 hover:underline">Entre em contato</a>.
@@ -183,8 +169,7 @@ export default function SuccessPage() {
               Erro na <span className="text-red-500 italic">verificação</span>
             </h1>
             <p className="text-lg text-white/70 mb-6 max-w-lg mx-auto">
-              Não foi possível confirmar o pagamento. Se você já pagou, nosso
-              sistema está processando — tente novamente em alguns instantes.
+              Não foi possível confirmar o pagamento. Se você já pagou, tente novamente em alguns instantes.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button

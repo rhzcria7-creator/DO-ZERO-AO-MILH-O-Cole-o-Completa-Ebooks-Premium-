@@ -2,15 +2,15 @@
 /**
  * Script de monitoramento de compras pendentes.
  * Roda via cron job a cada 5 minutos.
- * 
+ *
  * Fluxo:
  * 1. Consulta banco por compras pendentes
  * 2. Se encontrar, retorna dados formatados
  * 3. Hermes Agent notifica o usuário
  * 4. Usuário confirma via Discord/Telegram
  * 5. Script de confirmação envia ebook
- * 
- * Uso: node scripts/monitor-purchases.js
+ *
+ * Uso: node scripts/monitor-purchases.cjs
  * Variáveis de ambiente necessárias:
  * - DATABASE_URL (PostgreSQL)
  * - ADMIN_API_KEY (para confirmar)
@@ -19,6 +19,11 @@
 const { Pool } = require("pg");
 
 async function monitor() {
+  // Se não houver DATABASE_URL configurada, sair silenciosamente
+  if (!process.env.DATABASE_URL) {
+    process.exit(0);
+  }
+
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
@@ -27,10 +32,10 @@ async function monitor() {
   try {
     // Buscar compras pendentes
     const result = await pool.query(`
-      SELECT id, email, name, amount, metadata, created_at 
-      FROM purchases 
-      WHERE status = 'pending' 
-      ORDER BY created_at DESC 
+      SELECT id, email, name, amount, metadata, created_at
+      FROM purchases
+      WHERE status = 'pending'
+      ORDER BY created_at DESC
       LIMIT 10
     `);
 
@@ -54,7 +59,7 @@ async function monitor() {
       timestamp: new Date().toISOString(),
     }));
   } catch (error) {
-    console.error("Monitor error:", error.message);
+    // Erro de conexão - sair silenciosamente
     process.exit(1);
   } finally {
     await pool.end();
