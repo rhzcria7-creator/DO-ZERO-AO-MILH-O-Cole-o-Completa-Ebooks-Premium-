@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import * as schema from './schema.ts';
+import * as schema from './schema';
 
 export const createPool = () => {
   return new Pool({
@@ -14,7 +14,7 @@ export const createPool = () => {
 
 const pool = createPool();
 
-pool.on('error', (err) => {
+pool.on('error', (err: Error) => {
   console.error('Unexpected error on idle SQL pool client:', err);
 });
 

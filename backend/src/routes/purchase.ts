@@ -1,37 +1,47 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { param, validationResult } from "express-validator";
 import { db, purchases } from "../services/database.js";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { logger } from "../server.js";
 
 export const purchaseRouter = Router();
 
 /**
  * GET /api/purchase/:sessionId
- * Verifica se uma compra foi confirmada pelo Stripe.
- * 
- * Retorna apenas boolean para segurança:
- * - Não expõe dados sensíveis (e-mail, valor, etc.)
- * - Não revela se o session existe ou não para evitar enumeração
+ *
+ * Verifica se uma compra foi confirmada pelo gateway de pagamento.
+ *
+ * IMPORTANTE (segurança / LGPD):
+ * - Retorna APENAS um boolean (`verified`) e o `purchaseId` numérico.
+ * - NÃO expõe e-mail, nome, valor ou qualquer PII.
+ * - Resposta idêntica para "sessão inexistente" e "sessão não paga"
+ *   para evitar enumeração.
+ * - Sem autenticação: este endpoint pode ser chamado pelo front-end
+ *   durante o redirect de retorno. A checagem de propriedade real
+ *   do download é feita no endpoint /api/download (token HMAC) e em
+ *   /api/user-purchases (Firebase ID Token).
  */
 purchaseRouter.get(
   "/:sessionId",
   [
-    param("sessionId").isString().isLength({ min: 20, max: 200 }).withMessage("Session ID inválido"),
+    param("sessionId")
+      .isString()
+      .isLength({ min: 20, max: 200 })
+      .withMessage("Session ID inválido"),
   ],
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, _next: NextFunction) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ 
-          verified: false, 
-          error: "Session ID inválido" 
+        return res.status(400).json({
+          verified: false,
+          error: "Session ID inválido",
         });
       }
 
       const { sessionId } = req.params;
 
-      // Busca compra pelo session_id do Stripe
+      // Busca compra — APENAS campos não-sensíveis.
       const [purchase] = await db
         .select({
           id: purchases.id,
@@ -42,83 +52,46 @@ purchaseRouter.get(
         .where(eq(purchases.stripeSessionId, sessionId))
         .limit(1);
 
-      // Log de auditoria
-      logger.info("Purchase verification attempt", { 
-        sessionId: sessionId.substring(0, 20) + "...", 
+      logger.info("Purchase verification attempt", {
+        sessionIdPrefix: sessionId.substring(0, 12) + "...",
         found: !!purchase,
-        ip: req.ip 
+        ip: req.ip,
       });
 
-      // Verifica se a compra existe e está completa
       if (!purchase) {
-        // Para evitar enumeração, sempre retorna false mesmo se não encontrar
-        // Isso impede que atacantes descubram session IDs válidos
+        // Resposta uniforme para evitar enumeração.
         return res.json({ verified: false });
       }
 
-      // Verifica status: apenas 'completed' permite acesso
-      const isVerified = purchase.status === "completed" && purchase.paidAt !== null;
+      const isVerified =
+        purchase.status === "completed" && purchase.paidAt !== null;
 
       if (isVerified) {
-        logger.info("Purchase verified successfully", { 
+        logger.info("Purchase verified successfully", {
           purchaseId: purchase.id,
-          ip: req.ip 
+          ip: req.ip,
         });
       }
 
-      return res.json({ 
+      return res.json({
         verified: isVerified,
-        purchaseId: isVerified ? purchase.id : undefined
+        purchaseId: isVerified ? purchase.id : undefined,
       });
     } catch (error) {
-      logger.error("Purchase verification error", { error, sessionId: req.params.sessionId, ip: req.ip });
-      // Em caso de erro, retornar false por segurança
+      logger.error("Purchase verification error", {
+        error,
+        sessionIdPrefix: req.params.sessionId?.substring(0, 12),
+        ip: req.ip,
+      });
+      // Falha = não verificado. Nunca vaza dados em erro.
       return res.json({ verified: false });
     }
   }
 );
 
-/**
- * GET /api/purchase/:sessionId/details
- * Retorna detalhes da compra para uso interno (após verificação de sessão).
- * Requer token de verificação.
- */
-purchaseRouter.get(
-  "/:sessionId/details",
-  [
-    param("sessionId").isString().isLength({ min: 20, max: 200 }),
-  ],
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ error: "Session ID inválido" });
-      }
-
-      const { sessionId } = req.params;
-
-      const [purchase] = await db
-        .select({
-          id: purchases.id,
-          email: purchases.email,
-          name: purchases.name,
-          product: purchases.product,
-          amount: purchases.amount,
-          currency: purchases.currency,
-          status: purchases.status,
-        })
-        .from(purchases)
-        .where(eq(purchases.stripeSessionId, sessionId))
-        .limit(1);
-
-      if (!purchase || purchase.status !== "completed") {
-        return res.status(404).json({ error: "Compra não encontrada ou incompleta" });
-      }
-
-      return res.json({ purchase });
-    } catch (error) {
-      logger.error("Purchase details error", { error });
-      next(error);
-    }
-  }
-);
+// NOTA: O endpoint GET /api/purchase/:sessionId/details foi REMOVIDO
+// por vazar PII (e-mail, nome, valor) sem autenticação. Detalhes
+// sensíveis só podem ser consultados por:
+//   1. Usuário autenticado via Firebase ID Token em /api/user-purchases
+//   2. Admin autenticado em /admin/purchases/:id
+//   3. Sistema interno via webhook autenticado (nunca exposto ao client)

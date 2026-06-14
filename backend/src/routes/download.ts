@@ -3,10 +3,16 @@ import { param, query, validationResult } from "express-validator";
 import { config } from "../config/env.js";
 import { logger } from "../server.js";
 import { getTokenService } from "../services/token.js";
-import { db, purchases, downloads, activityLogs } from "../services/database.js";
+import {
+  db,
+  purchases,
+  downloads,
+  activityLogs,
+  revokedTokens,
+} from "../services/database.js";
 import { eq, and, gt } from "drizzle-orm";
 import crypto from "crypto";
-import { adminStorage } from "../../../src/lib/firebase-admin.ts";
+import { adminStorage } from "../../../src/lib/firebase-admin";
 
 export const downloadRouter = Router();
 
@@ -92,21 +98,20 @@ downloadRouter.get(
         return res.status(429).json({ error: "Limite de downloads excedido. Tente novamente em 1 hora." });
       }
 
-      // Verificar se token está na lista de revogados
+      // Verificar se token está na lista de revogados (consulta direta à tabela)
       const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
       const [revokedToken] = await db
-        .select()
-        .from(activityLogs)
-        .where(
-          and(
-            eq(activityLogs.action, "token.revoked"),
-            eq(activityLogs.metadata, JSON.stringify({ tokenHash }))
-          )
-        )
+        .select({ id: revokedTokens.id, reason: revokedTokens.reason })
+        .from(revokedTokens)
+        .where(eq(revokedTokens.tokenHash, tokenHash))
         .limit(1);
 
       if (revokedToken) {
-        logger.warn("Download attempt with revoked token", { ip, tokenHash });
+        logger.warn("Download attempt with revoked token", {
+          ip,
+          tokenHash,
+          reason: revokedToken.reason,
+        });
         return res.status(403).json({ error: "Token revogado" });
       }
 

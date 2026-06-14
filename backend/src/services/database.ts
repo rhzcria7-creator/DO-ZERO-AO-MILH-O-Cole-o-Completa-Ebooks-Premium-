@@ -1,5 +1,32 @@
 import { db } from "../../../src/db/index.ts";
-import { eq, desc, and, gte } from "drizzle-orm";
-import { purchases, downloads, subscribers, activityLogs } from "../../../src/db/schema.ts";
+import { eq, desc, and, gte, lt, sql, ne, inArray } from "drizzle-orm";
+import {
+  users,
+  purchases,
+  downloads,
+  subscribers,
+  activityLogs,
+  adminSessions,
+  revokedTokens,
+  ipBlocks,
+} from "../../../src/db/schema.ts";
 
-export { db, purchases, downloads, subscribers, activityLogs, eq, desc, and, gte };
+export {
+  db,
+  users,
+  purchases,
+  downloads,
+  subscribers,
+  activityLogs,
+  adminSessions,
+  revokedTokens,
+  ipBlocks,
+  eq,
+  desc,
+  and,
+  gte,
+  lt,
+  sql,
+  ne,
+  inArray,
+};

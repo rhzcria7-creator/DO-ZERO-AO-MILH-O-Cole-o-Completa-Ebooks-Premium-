@@ -3,8 +3,19 @@ import { body, query, validationResult } from "express-validator";
 import crypto from "crypto";
 import { config } from "../config/env.js";
 import { logger } from "../server.js";
-import { db, purchases, downloads, subscribers, activityLogs, eq, desc, and, gte } from "../services/database.js";
-import { authenticateAdmin, createSession, validateSession, invalidateSession } from "../services/auth.js";
+import {
+  db,
+  purchases,
+  downloads,
+  subscribers,
+  activityLogs,
+  eq,
+  desc,
+  and,
+  gte,
+  sql,
+} from "../services/database.js";
+import { authenticateAdmin, validateSession, invalidateSession } from "../services/auth.js";
 import { checkAbuse, recordAbuseAttempt } from "../middleware/abuse-detection.js";
 
 export const adminRouter = Router();
@@ -51,38 +62,43 @@ function blockAdminIP(ip: string): void {
   logger.warn("Admin IP blocked", { ip });
 }
 
-// Auth middleware
-function adminAuth(req: Request, res: Response, next: NextFunction) {
-  const ip = req.ip || "unknown";
-  
-  // Verificar IP bloqueado
-  if (checkAdminBlocked(ip)) {
-    logger.warn("Admin access blocked", { ip });
-    return res.status(403).json({ error: "Acesso temporariamente bloqueado" });
-  }
-  
-  // Verificar abuso
-  const abuseResult = checkAbuse(ip);
-  if (abuseResult.isBlocked) {
-    blockAdminIP(ip);
-    return res.status(403).json({ error: "Acesso temporariamente bloqueado" });
-  }
+// Auth middleware — valida sessão contra o PostgreSQL (com L1 cache).
+// Agora é async porque validateSession() é async.
+async function adminAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    const ip = req.ip || "unknown";
 
-  const sessionId = req.headers["x-session-id"] as string || 
-                    req.cookies?.session_id;
+    if (checkAdminBlocked(ip)) {
+      logger.warn("Admin access blocked", { ip });
+      return res.status(403).json({ error: "Acesso temporariamente bloqueado" });
+    }
 
-  if (!sessionId) {
-    return res.status(401).json({ error: "Não autenticado" });
+    const abuseResult = checkAbuse(ip);
+    if (abuseResult.isBlocked) {
+      blockAdminIP(ip);
+      return res.status(403).json({ error: "Acesso temporariamente bloqueado" });
+    }
+
+    const sessionId =
+      (req.headers["x-session-id"] as string | undefined) ??
+      (req.cookies?.session_id as string | undefined);
+
+    if (!sessionId) {
+      return res.status(401).json({ error: "Não autenticado" });
+    }
+
+    const session = await validateSession(sessionId);
+    if (!session) {
+      recordAbuseAttempt(ip, "Invalid admin session");
+      return res.status(401).json({ error: "Sessão inválida ou expirada" });
+    }
+
+    (req as any).adminSession = session;
+    next();
+  } catch (error) {
+    logger.error("Admin auth middleware error", { error });
+    next(error);
   }
-
-  const session = validateSession(sessionId);
-  if (!session) {
-    recordAbuseAttempt(ip, "Invalid admin session");
-    return res.status(401).json({ error: "Sessão inválida ou expirada" });
-  }
-
-  (req as any).adminSession = session;
-  next();
 }
 
 /**
@@ -113,9 +129,10 @@ adminRouter.post(
       }
 
       const { email, password } = req.body;
+      const userAgent = (req.headers["user-agent"] as string | undefined) ?? undefined;
 
-      // Authenticate
-      const sessionId = authenticateAdmin(email, password);
+      // Authenticate (cria sessão persistida no PostgreSQL)
+      const sessionId = await authenticateAdmin(email, password, ip, userAgent);
       if (!sessionId) {
         return res.status(401).json({ error: "Credenciais inválidas" });
       }
@@ -140,7 +157,7 @@ adminRouter.post(
  * POST /admin/logout
  * Encerra sessão
  */
-adminRouter.post("/logout", adminAuth, (req: Request, res: Response) => {
+adminRouter.post("/logout", adminAuth, async (req: Request, res: Response) => {
   const sessionId = req.headers["x-session-id"] as string || 
                     req.cookies?.session_id;
   
