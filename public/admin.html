@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Admin — Do Zero ao Milhão</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #000; color: #fff; min-height: 100vh; }
+    .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+    h1 { color: #F5C542; margin-bottom: 20px; font-size: 24px; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+    .stat { background: #111; border: 1px solid #333; border-radius: 8px; padding: 15px; text-align: center; }
+    .stat-value { font-size: 28px; font-weight: bold; color: #F5C542; }
+    .stat-label { font-size: 12px; color: #888; margin-top: 5px; }
+    .purchase { background: #111; border: 1px solid #333; border-radius: 8px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .purchase-info { flex: 1; }
+    .purchase-email { font-weight: bold; color: #F5C542; }
+    .purchase-name { color: #888; font-size: 14px; }
+    .purchase-amount { color: #4ade80; font-weight: bold; }
+    .purchase-date { color: #666; font-size: 12px; }
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; }
+    .btn-confirm { background: #22c55e; color: #000; }
+    .btn-reject { background: #ef4444; color: #fff; }
+    .btn:hover { opacity: 0.8; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .login { max-width: 400px; margin: 100px auto; }
+    .login input { width: 100%; padding: 12px; margin-bottom: 10px; background: #111; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 16px; }
+    .login button { width: 100%; padding: 12px; background: #F5C542; color: #000; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    .error { color: #ef4444; margin-top: 10px; font-size: 14px; }
+    .empty { color: #666; text-align: center; padding: 40px; }
+    .refresh { background: #333; color: #fff; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="login-view" class="login">
+      <h1>🔐 Login Admin</h1>
+      <input type="password" id="api-key" placeholder="API Key">
+      <button onclick="login()">Entrar</button>
+      <div id="login-error" class="error"></div>
+    </div>
+
+    <div id="dashboard-view" style="display: none;">
+      <h1>📊 Painel de Vendas</h1>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value" id="pending-count">0</div>
+          <div class="stat-label">Pendentes</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="completed-count">0</div>
+          <div class="stat-label">Confirmadas</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="revenue">R$ 0</div>
+          <div class="stat-label">Receita</div>
+        </div>
+      </div>
+      <button class="refresh" onclick="loadPending()">🔄 Atualizar</button>
+      <div id="purchases-list"></div>
+    </div>
+  </div>
+
+  <script>
+    let API_KEY = '';
+
+    function login() {
+      API_KEY = document.getElementById('api-key').value;
+      if (!API_KEY) {
+        document.getElementById('login-error').textContent = 'Digite a API Key';
+        return;
+      }
+      document.getElementById('login-view').style.display = 'none';
+      document.getElementById('dashboard-view').style.display = 'block';
+      loadPending();
+      loadStats();
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/admin-confirm/stats', {
+          headers: { 'x-admin-key': API_KEY }
+        });
+        const data = await res.json();
+        document.getElementById('pending-count').textContent = data.pending || 0;
+        document.getElementById('completed-count').textContent = data.completed || 0;
+        document.getElementById('revenue').textContent = `R$ ${data.revenue || '0'}`;
+      } catch (e) {
+        console.error('Stats error:', e);
+      }
+    }
+
+    async function loadPending() {
+      try {
+        const res = await fetch('/admin-confirm/pending', {
+          headers: { 'x-admin-key': API_KEY }
+        });
+        const data = await res.json();
+        const list = document.getElementById('purchases-list');
+
+        if (!data.purchases || data.purchases.length === 0) {
+          list.innerHTML = '<div class="empty">Nenhuma compra pendente</div>';
+          return;
+        }
+
+        list.innerHTML = data.purchases.map(p => `
+          <div class="purchase">
+            <div class="purchase-info">
+              <div class="purchase-email">${p.email}</div>
+              <div class="purchase-name">${p.name || 'Sem nome'}</div>
+              <div class="purchase-amount">R$ ${p.amount}</div>
+              <div class="purchase-date">${new Date(p.createdAt).toLocaleString('pt-BR')}</div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-confirm" onclick="confirmPurchase(${p.id})">✅ Confirmar</button>
+              <button class="btn btn-reject" onclick="rejectPurchase(${p.id})">❌ Rejeitar</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error('Load error:', e);
+      }
+    }
+
+    async function confirmPurchase(id) {
+      if (!confirm('Confirmar esta compra e enviar ebook?')) return;
+      try {
+        const res = await fetch(`/admin-confirm/confirm/${id}`, {
+          method: 'POST',
+          headers: { 'x-admin-key': API_KEY }
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('✅ Compra confirmada! Ebook enviado por e-mail.');
+          loadPending();
+          loadStats();
+        } else {
+          alert('❌ Erro: ' + data.error);
+        }
+      } catch (e) {
+        alert('❌ Erro de conexão');
+      }
+    }
+
+    async function rejectPurchase(id) {
+      if (!confirm('Rejeitar esta compra?')) return;
+      try {
+        const res = await fetch(`/admin-confirm/reject/${id}`, {
+          method: 'POST',
+          headers: { 'x-admin-key': API_KEY }
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Compra rejeitada.');
+          loadPending();
+          loadStats();
+        }
+      } catch (e) {
+        alert('❌ Erro de conexão');
+      }
+    }
+  </script>
+</body>
+</html>
