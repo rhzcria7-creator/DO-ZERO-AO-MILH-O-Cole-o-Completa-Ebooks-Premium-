@@ -44,6 +44,7 @@ const envSchema = z.object({
   // Admin (opcional)
   ADMIN_EMAIL: z.string().email().optional(),
   ADMIN_PASSWORD_HASH: z.string().optional(),
+  ADMIN_API_KEY: z.string().min(16).optional(),
 
   // Log
   LOG_LEVEL: z.string().default("info"),

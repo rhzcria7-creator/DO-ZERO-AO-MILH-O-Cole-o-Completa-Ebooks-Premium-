@@ -3,8 +3,15 @@ import { PRODUCT, PIX } from "../constants/product";
 import { useAuth } from "../contexts/AuthContext";
 import { AuthForms } from "../components/AuthForms";
 
+type CheckoutStep = "payment" | "confirming" | "pending" | "error";
+
 export default function CheckoutPage() {
   const [copied, setCopied] = useState(false);
+  const [step, setStep] = useState<CheckoutStep>("payment");
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [purchaseId, setPurchaseId] = useState<number | null>(null);
   const { user, loading } = useAuth();
 
   const handleCopy = async () => {
@@ -26,6 +33,39 @@ export default function CheckoutPage() {
       } finally {
         document.body.removeChild(ta);
       }
+    }
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!email || !email.includes("@")) {
+      setError("Digite um e-mail válido.");
+      return;
+    }
+
+    setStep("confirming");
+    setError("");
+
+    try {
+      const res = await fetch("/checkout/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          name: name || "Cliente",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao registrar compra");
+      }
+
+      setPurchaseId(data.purchaseId);
+      setStep("pending");
+    } catch (err: any) {
+      setError(err.message || "Erro ao processar. Tente novamente.");
+      setStep("payment");
     }
   };
 
@@ -75,7 +115,7 @@ export default function CheckoutPage() {
             <span className="italic text-gold-gradient">Guia Definitivo</span>
           </h1>
           <p className="mt-4 text-sm md:text-base text-mist">
-            Acesso imediato após confirmação automática do pagamento.
+            Acesso imediato após confirmação do pagamento.
           </p>
         </div>
 
@@ -83,6 +123,40 @@ export default function CheckoutPage() {
           <div className="mt-16 flex justify-center">
             <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/[0.02] p-8 backdrop-blur">
                <AuthForms />
+            </div>
+          </div>
+        ) : step === "pending" ? (
+          /* ===== PENDING CONFIRMATION ===== */
+          <div className="mt-16 flex justify-center">
+            <div className="w-full max-w-md rounded-3xl border border-gold-400/30 bg-gradient-to-b from-gold-400/[0.06] to-transparent p-8 backdrop-blur text-center">
+              <div className="w-16 h-16 mx-auto border-4 border-gold-400/20 border-t-gold-400 rounded-full animate-spin mb-6" />
+              <h2 className="font-display text-2xl tracking-tight text-gold-gradient">
+                Pagamento Registrado!
+              </h2>
+              <p className="mt-4 text-sm text-mist leading-relaxed">
+                Sua compra foi registrada. Assim que o pagamento for confirmado,
+                você receberá o ebook por e-mail.
+              </p>
+              {purchaseId && (
+                <p className="mt-3 text-xs text-white/40">
+                  Protocolo: #{purchaseId}
+                </p>
+              )}
+              <div className="mt-6 p-4 rounded-xl border border-white/10 bg-black/40">
+                <p className="text-xs text-mist">
+                  <span className="text-white font-medium">E-mail:</span> {email}
+                </p>
+                <p className="text-xs text-mist mt-1">
+                  <span className="text-white font-medium">Status:</span>{" "}
+                  <span className="text-gold-400">Aguardando confirmação</span>
+                </p>
+              </div>
+              <a
+                href="/"
+                className="mt-6 inline-flex items-center gap-2 text-xs text-white/50 hover:text-gold-400 transition"
+              >
+                Voltar para o site
+              </a>
             </div>
           </div>
         ) : (
@@ -147,7 +221,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Badges segurança */}
+            {/* Badges */}
             <div className="mt-7 grid grid-cols-2 gap-2.5">
               <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/10 bg-black/40">
                 <svg className="w-3.5 h-3.5 text-gold-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -167,7 +241,6 @@ export default function CheckoutPage() {
                   Garantia {PRODUCT.guaranteeDays} dias
                 </span>
               </div>
-{/* INFO MERCADO PAGO REMOVIDA */}
             </div>
           </aside>
 
@@ -241,28 +314,95 @@ export default function CheckoutPage() {
                 )}
               </button>
             </div>
-
-{/* RECEIVER INFO REMOVIDO PARA PRIVACIDADE */}
           </section>
         </div>
+
+        {/* ===== CONFIRM PAYMENT ===== */}
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur p-7 lg:p-9">
+          <div className="text-xs tracking-[0.3em] uppercase text-gold-400 mb-2">
+            02 · Confirmar pagamento
+          </div>
+          <h3 className="font-display text-2xl font-light tracking-tight">
+            Após pagar, confirme aqui
+          </h3>
+          <p className="mt-2 text-sm text-mist">
+            Informe seu e-mail para que possamos confirmar o pagamento e enviar o ebook.
+          </p>
+
+          <div className="mt-6 grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] uppercase tracking-[0.25em] text-white/50">
+                Seu e-mail *
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
+                autoComplete="email"
+                className="mt-2 w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-gold-400 focus:outline-none transition"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-[0.25em] text-white/50">
+                Seu nome
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Nome completo"
+                autoComplete="name"
+                className="mt-2 w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-gold-400 focus:outline-none transition"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
+              <p className="text-red-400 text-xs font-medium text-center">{error}</p>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleConfirmPayment}
+            disabled={step === "confirming"}
+            className="mt-6 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-full font-semibold text-sm tracking-wide bg-gold-400 text-black hover:bg-gold-300 glow-pulse transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {step === "confirming" ? (
+              <>
+                <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                Registrando...
+              </>
+            ) : (
+              <>
+                Já paguei · confirmar pagamento
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M13 5l7 7-7 7" />
+                </svg>
+              </>
+            )}
+          </button>
+
+          <p className="mt-4 text-center text-[11px] text-white/40">
+            Após a confirmação, o ebook será enviado para seu e-mail em até 5 minutos.
+          </p>
+        </section>
 
         {/* ===== INSTRUCTIONS ===== */}
         <section className="mt-10 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur p-7 lg:p-9">
           <div className="text-xs tracking-[0.3em] uppercase text-gold-400 mb-2">
-            02 · Como pagar
+            03 · Como funciona
           </div>
           <h3 className="font-display text-2xl font-light tracking-tight">
-            4 passos para liberar seu acesso
+            3 passos para receber seu ebook
           </h3>
-          <ol className="mt-7 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <ol className="mt-7 grid sm:grid-cols-3 gap-4">
             {[
-              { n: "1", t: "Abra o app do seu banco" },
-              { n: "2", t: "Escolha a opção Pagar via Pix" },
-              { n: "3", t: "Escaneie o QR Code ou cole o código" },
-              {
-                n: "4",
-                t: "Após pagamento, clique abaixo para liberar acesso no painel",
-              },
+              { n: "1", t: "Pague via Pix", d: "Escaneie o QR Code ou copie o código" },
+              { n: "2", t: "Confirme aqui", d: "Digite seu e-mail e confirme o pagamento" },
+              { n: "3", t: "Receba o ebook", d: "Enviado por e-mail em até 5 minutos" },
             ].map((s) => (
               <li
                 key={s.n}
@@ -271,29 +411,15 @@ export default function CheckoutPage() {
                 <div className="font-display text-4xl text-gold-400/30">
                   {s.n}
                 </div>
-                <p className="mt-2 text-sm text-white/80 leading-relaxed">
+                <p className="mt-2 text-sm text-white font-medium">
                   {s.t}
+                </p>
+                <p className="mt-1 text-xs text-mist">
+                  {s.d}
                 </p>
               </li>
             ))}
           </ol>
-
-          <div className="mt-7 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
-            <p className="text-xs text-mist max-w-md leading-relaxed">
-              Já efetuou o pagamento? O acesso ao PDF é liberado em até{" "}
-              <span className="text-white">2 minutos</span> após a confirmação
-              do pagamento.
-            </p>
-            <a
-              href="/sucesso?session_id=demo"
-              className="btn-ghost !text-sm whitespace-nowrap"
-            >
-              Já paguei · liberar acesso
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M13 5l7 7-7 7" />
-              </svg>
-            </a>
-          </div>
         </section>
 
         {/* ===== LEGAL ===== */}

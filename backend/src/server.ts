@@ -16,6 +16,7 @@ import { newsletterRouter } from "./routes/newsletter.js";
 import { healthRouter } from "./routes/health.js";
 import { adminRouter } from "./routes/admin.js";
 import { userPurchasesRouter } from "./routes/user-purchases.js";
+import { adminConfirmRouter } from "./routes/admin-confirm.js";
 import { errorHandler } from "./middleware/error-handler.js";
 
 // Logger
@@ -231,6 +232,7 @@ app.use("/api/user-purchases", userPurchasesRouter);
 app.use("/api/download", downloadRouter);
 app.use("/newsletter", newsletterRouter);
 app.use("/admin", adminRouter);
+app.use("/admin-confirm", adminConfirmRouter);
 
 // ============================================================
 // SECURITY HEADERS (extra)
