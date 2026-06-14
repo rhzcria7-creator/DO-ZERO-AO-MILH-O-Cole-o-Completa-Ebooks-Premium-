@@ -14,6 +14,7 @@ import {
   and,
   gte,
   sql,
+  lte,
 } from "../services/database.js";
 import { authenticateAdmin, validateSession, invalidateSession } from "../services/auth.js";
 import { checkAbuse, recordAbuseAttempt } from "../middleware/abuse-detection.js";
@@ -176,41 +177,53 @@ adminRouter.post("/logout", adminAuth, async (req: Request, res: Response) => {
  */
 adminRouter.get("/stats", adminAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    // Total purchases
-    const [totalPurchases] = await db
-      .select()
+    // SQL aggregation — evita full table scan em produção
+    const [completedStats] = await db
+      .select({
+        count: sql<number>`cast(count(*) as integer)`,
+        revenue: sql<string>`coalesce(cast(sum(cast(${purchases.amount} as numeric(10,2))) as text), '0')`,
+      })
       .from(purchases)
       .where(eq(purchases.status, "completed"));
 
-    const allPurchases = await db.select().from(purchases);
-    const completedPurchases = allPurchases.filter(p => p.status === "completed");
-    const totalRevenue = completedPurchases.reduce((sum, p) => sum + Number(p.amount), 0);
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Purchases this month
-    const recentPurchases = completedPurchases.filter(p => 
-      p.paidAt && new Date(p.paidAt) >= thirtyDaysAgo
-    );
+    const [recentStats] = await db
+      .select({
+        count: sql<number>`cast(count(*) as integer)`,
+        revenue: sql<string>`coalesce(cast(sum(cast(${purchases.amount} as numeric(10,2))) as text), '0')`,
+      })
+      .from(purchases)
+      .where(
+        and(
+          eq(purchases.status, "completed"),
+          gte(purchases.paidAt, thirtyDaysAgo)
+        )
+      );
 
-    // Active downloads
-    const allDownloads = await db.select().from(downloads);
-    const activeDownloads = allDownloads.filter(d => 
-      d.expiresAt && new Date(d.expiresAt) > now
-    );
+    const [activeDownloadCount] = await db
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(downloads)
+      .where(gt(downloads.expiresAt, now));
 
-    // Subscribers
-    const allSubscribers = await db.select().from(subscribers);
+    const [subscriberCount] = await db
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(subscribers);
+
+    const [refundedCount] = await db
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(purchases)
+      .where(eq(purchases.status, "refunded"));
 
     res.json({
-      totalPurchases: completedPurchases.length,
-      totalRevenue: totalRevenue.toFixed(2),
-      purchasesThisMonth: recentPurchases.length,
-      revenueThisMonth: recentPurchases.reduce((sum, p) => sum + Number(p.amount), 0).toFixed(2),
-      activeDownloads: activeDownloads.length,
-      totalSubscribers: allSubscribers.length,
-      refundedPurchases: allPurchases.filter(p => p.status === "refunded").length,
+      totalPurchases: completedStats?.count ?? 0,
+      totalRevenue: completedStats?.revenue ?? "0",
+      purchasesThisMonth: recentStats?.count ?? 0,
+      revenueThisMonth: recentStats?.revenue ?? "0",
+      activeDownloads: activeDownloadCount?.count ?? 0,
+      totalSubscribers: subscriberCount?.count ?? 0,
+      refundedPurchases: refundedCount?.count ?? 0,
     });
   } catch (error) {
     next(error);
@@ -241,7 +254,8 @@ adminRouter.get(
         .limit(limit)
         .offset(offset);
 
-      const total = (await db.select().from(purchases)).length;
+      const [totalRow] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(purchases);
+      const total = totalRow?.count ?? 0;
 
       res.json({
         purchases: allPurchases.map(p => ({
@@ -364,15 +378,19 @@ adminRouter.get("/subscribers", adminAuth, async (req: Request, res: Response, n
  */
 adminRouter.get("/downloads", adminAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const allDownloads = await db.select().from(downloads);
-    const now = Date.now();
+    const now = new Date();
 
-    const stats = {
-      total: allDownloads.length,
-      active: allDownloads.filter(d => d.expiresAt && new Date(d.expiresAt) > now).length,
-      expired: allDownloads.filter(d => d.expiresAt && new Date(d.expiresAt) <= now).length,
-      totalDownloads: allDownloads.reduce((sum, d) => sum + (d.usedCount || 0), 0),
-    };
+        const [totalDl] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(downloads);
+        const [activeDl] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(downloads).where(gt(downloads.expiresAt, now));
+        const [expiredDl] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(downloads).where(lte(downloads.expiresAt, now));
+        const [sumUsed] = await db.select({ total: sql<number>`coalesce(cast(sum(${downloads.usedCount}) as integer), 0)` }).from(downloads);
+
+        const stats = {
+          total: totalDl?.count ?? 0,
+          active: activeDl?.count ?? 0,
+          expired: expiredDl?.count ?? 0,
+          totalDownloads: sumUsed?.total ?? 0,
+        };
 
     res.json(stats);
   } catch (error) {

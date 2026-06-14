@@ -830,7 +830,7 @@ function Audience() {
 function FaqItem({ q, a, open, onClick }: { q: string; a: string; open: boolean; onClick: () => void }) {
   return (
     <div className="acc-item">
-      <button onClick={onClick} className="w-full flex items-center justify-between gap-6 py-6 text-left group">
+      <button onClick={onClick} aria-expanded={open} className="w-full flex items-center justify-between gap-6 py-6 text-left group">
         <span className="font-medium text-lg lg:text-xl tracking-tight group-hover:text-gold-400 transition-colors">{q}</span>
         <span className={`acc-chevron shrink-0 w-9 h-9 rounded-full border border-white/15 flex items-center justify-center text-gold-400 ${open ? "open" : ""}`}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M7 2v10M2 7h10"/></svg>
@@ -1034,11 +1034,23 @@ export default function App() {
   useScrollReveal();
 
   const [path, setPath] = useState((window as any).__FORCED_PATH__ || window.location.pathname);
+  const [search, setSearch] = useState(window.location.search);
 
   useEffect(() => {
-    const onPop = () => setPath(window.location.pathname);
+    const onPop = () => { setPath(window.location.pathname); setSearch(window.location.search); };
     window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+
+    // Intercept pushState/replaceState for SPA navigation
+    const origPush = history.pushState.bind(history);
+    const origReplace = history.replaceState.bind(history);
+    history.pushState = (...args) => { origPush(...args); onPop(); };
+    history.replaceState = (...args) => { origReplace(...args); onPop(); };
+
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      history.pushState = origPush;
+      history.replaceState = origReplace;
+    };
   }, []);
 
   // Roteamento simples com lazy loading
@@ -1054,7 +1066,7 @@ export default function App() {
   if (path === "/dashboard") {
     return <Suspense fallback={<PageLoader />}><DashboardPage /></Suspense>;
   }
-  if (path === "/sucesso" || window.location.search.includes("session_id")) {
+  if (path === "/sucesso" || search.includes("session_id") || search.includes("sessionId")) {
     return <Suspense fallback={<PageLoader />}><SuccessPage /></Suspense>;
   }
 

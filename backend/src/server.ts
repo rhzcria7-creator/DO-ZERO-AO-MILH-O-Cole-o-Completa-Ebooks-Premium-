@@ -40,6 +40,9 @@ if (config.NODE_ENV !== "production") {
 
 const app = express();
 
+// Trust first proxy (Cloudflare, Vercel, Nginx) so req.ip gives the real client IP.
+app.set("trust proxy", config.TRUST_PROXY ? 1 : false);
+
 // ============================================================
 // OPEN REDIRECT PROTECTION
 // ============================================================
@@ -97,7 +100,7 @@ app.use(helmet({
       upgradeInsecureRequests: [],
     },
   },
-  crossOriginEmbedderPolicy: true,
+  crossOriginEmbedderPolicy: { policy: "credentialless" },
   crossOriginOpenerPolicy: true,
   crossOriginResourcePolicy: { policy: "same-origin" },
   referrerPolicy: { policy: "strict-origin-when-cross-origin" },

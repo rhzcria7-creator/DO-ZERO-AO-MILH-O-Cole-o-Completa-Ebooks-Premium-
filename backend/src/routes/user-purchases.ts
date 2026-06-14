@@ -1,86 +1,87 @@
-import { Router, Request, Response } from "express";
-import { adminAuth, adminStorage } from "../../../src/lib/firebase-admin.ts";
-import { db, purchases } from "../services/database.ts";
-import { eq } from "drizzle-orm";
-import { logger } from "../server.ts";
-
-export const userPurchasesRouter = Router();
-
-// Middleware to verify Firebase Auth token
-const verifyAuth = async (req: Request, res: Response, next: Function) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Missing or invalid authorization header" });
-  }
-
-  const token = authHeader.split(" ")[1];
-  try {
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    (req as any).user = decodedToken;
-    next();
-  } catch (error) {
-    logger.warn("Unauthorized access attempt", { error });
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-};
-
-userPurchasesRouter.get("/", verifyAuth, async (req: Request, res: Response) => {
-  try {
-    const uid = (req as any).user.uid;
-    const userPurchases = await db
-      .select()
-      .from(purchases)
-      .where(eq(purchases.userId, uid));
-
-    res.json(userPurchases);
-  } catch (error) {
-    logger.error("Error fetching purchases", { error });
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-userPurchasesRouter.get("/:purchaseId/download", verifyAuth, async (req: Request, res: Response) => {
-  try {
-    const uid = (req as any).user.uid;
-    const { purchaseId } = req.params;
-
-    // Verify the purchase belongs to the user and is completed/approved
-    const [purchase] = await db
-      .select()
-      .from(purchases)
-      .where(eq(purchases.id, parseInt(purchaseId, 10)))
-      .limit(1);
-
-    if (!purchase) {
-      return res.status(404).json({ error: "Purchase not found" });
-    }
-
-    if (purchase.userId !== uid) {
-      return res.status(403).json({ error: "Unauthorized access to purchase" });
-    }
-
-    if (purchase.status !== "completed" && purchase.status !== "approved") {
-      return res.status(403).json({ error: "Payment not completed" });
-    }
-
-    // Generate signed URL
-    const bucket = adminStorage.bucket();
-    const file = bucket.file("ebooks/dozeroaomilhao.pdf");
-    
-    const [exists] = await file.exists();
-    if (!exists) {
-      return res.status(404).json({ error: "File temporarily unavailable" });
-    }
-
-    const [url] = await file.getSignedUrl({
-      version: "v4",
-      action: "read",
-      expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-    });
-
-    res.json({ url });
-  } catch (error) {
-    logger.error("Error generating download url", { error });
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+1|import { Router, Request, Response } from "express";
+2|import { adminAuth, adminStorage } from "../../../src/lib/firebase-admin";
+3|import { db, purchases } from "../services/database.js";
+4|import { eq } from "drizzle-orm";
+5|import { logger } from "../server.js";
+6|
+7|export const userPurchasesRouter = Router();
+8|
+9|// Middleware to verify Firebase Auth token
+10|const verifyAuth = async (req: Request, res: Response, next: Function) => {
+11|  const authHeader = req.headers.authorization;
+12|  if (!authHeader?.startsWith("Bearer ")) {
+13|    return res.status(401).json({ error: "Missing or invalid authorization header" });
+14|  }
+15|
+16|  const token = authHeader.split(" ")[1];
+17|  try {
+18|    const decodedToken = await adminAuth.verifyIdToken(token);
+19|    (req as any).user = decodedToken;
+20|    next();
+21|  } catch (error) {
+22|    logger.warn("Unauthorized access attempt", { error });
+23|    return res.status(401).json({ error: "Unauthorized" });
+24|  }
+25|};
+26|
+27|userPurchasesRouter.get("/", verifyAuth, async (req: Request, res: Response) => {
+28|  try {
+29|    const uid = (req as any).user.uid;
+30|    const userPurchases = await db
+31|      .select()
+32|      .from(purchases)
+33|      .where(eq(purchases.userId, uid));
+34|
+35|    res.json(userPurchases);
+36|  } catch (error) {
+37|    logger.error("Error fetching purchases", { error });
+38|    res.status(500).json({ error: "Internal server error" });
+39|  }
+40|});
+41|
+42|userPurchasesRouter.get("/:purchaseId/download", verifyAuth, async (req: Request, res: Response) => {
+43|  try {
+44|    const uid = (req as any).user.uid;
+45|    const { purchaseId } = req.params;
+46|
+47|    // Verify the purchase belongs to the user and is completed/approved
+48|    const [purchase] = await db
+49|      .select()
+50|      .from(purchases)
+51|      .where(eq(purchases.id, parseInt(purchaseId, 10)))
+52|      .limit(1);
+53|
+54|    if (!purchase) {
+55|      return res.status(404).json({ error: "Purchase not found" });
+56|    }
+57|
+58|    if (purchase.userId !== uid) {
+59|      return res.status(403).json({ error: "Unauthorized access to purchase" });
+60|    }
+61|
+62|    if (purchase.status !== "completed" && purchase.status !== "approved") {
+63|      return res.status(403).json({ error: "Payment not completed" });
+64|    }
+65|
+66|    // Generate signed URL
+67|    const bucket = adminStorage.bucket();
+68|    const file = bucket.file("ebooks/dozeroaomilhao.pdf");
+69|    
+70|    const [exists] = await file.exists();
+71|    if (!exists) {
+72|      return res.status(404).json({ error: "File temporarily unavailable" });
+73|    }
+74|
+75|    const [url] = await file.getSignedUrl({
+76|      version: "v4",
+77|      action: "read",
+78|      expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+79|    });
+80|
+81|    res.json({ url });
+82|  } catch (error) {
+83|    logger.error("Error generating download url", { error });
+84|    res.status(500).json({ error: "Internal server error" });
+85|  }
+86|});
+87|

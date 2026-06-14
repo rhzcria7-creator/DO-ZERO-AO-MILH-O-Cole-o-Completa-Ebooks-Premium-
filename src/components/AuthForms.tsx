@@ -127,6 +127,7 @@ export function AuthForms() {
             <input
               type="text"
               name="name"
+              autoComplete="name"
               className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-gold-400 focus:outline-none transition"
               placeholder="Seu nome"
               value={name}
@@ -139,6 +140,7 @@ export function AuthForms() {
           <input
             type="email"
             name="email"
+            autoComplete="email"
             className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-gold-400 focus:outline-none transition"
             placeholder="seu@email.com"
             value={email}
@@ -150,6 +152,7 @@ export function AuthForms() {
           <input
             type="password"
             name="password"
+            autoComplete={isLogin ? "current-password" : "new-password"}
             className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-gold-400 focus:outline-none transition"
             placeholder="••••••••"
             value={password}

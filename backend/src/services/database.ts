@@ -25,6 +25,7 @@ export {
   desc,
   and,
   gte,
+  lte,
   lt,
   sql,
   ne,
