@@ -1,5 +1,5 @@
 import { db } from "../../../src/db/index.ts";
-import { eq, desc, and, gte, lt, sql, ne, inArray } from "drizzle-orm";
+import { eq, desc, and, gte, lte, lt, sql, ne, inArray } from "drizzle-orm";
 import {
   users,
   purchases,
