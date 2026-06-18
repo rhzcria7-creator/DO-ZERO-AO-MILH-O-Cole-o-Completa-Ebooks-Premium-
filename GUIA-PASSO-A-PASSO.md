@@ -758,7 +758,7 @@ const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 
-const files = ['ebook-cover.png', 'logo-og.png', 'qr-code-pix-new.png'];
+const files = ['ebook-cover.png', 'logo-og.png', 'qr-code-pix.png'];
 files.forEach(async (f) => {
   const input = path.join('public', f);
   const output = path.join('public', f.replace('.png', '.webp'));

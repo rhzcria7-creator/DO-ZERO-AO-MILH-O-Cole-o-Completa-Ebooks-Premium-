@@ -29,7 +29,7 @@ export const PIX = {
   receiverName: "Rhian Augusto Reis Lopes",
   cpfMasked: "***.873.036-**",
   institution: "Mercado Pago",
-  qrCodeImage: "/qr-code-pix-clean.png",
+  qrCodeImage: "/qr-code-pix.png",
   // Código copia-e-cola PIX (BR Code EMV)
   copyPaste:
     "00020126580014br.gov.bcb.pix0136b1734aa3-6240-4d95-9194-33387d596f4a5204000053039865406129.905802BR5924Rhian Augusto Reis Lopes6009Sao Paulo62240520daqr3180513534991866630477BB",
