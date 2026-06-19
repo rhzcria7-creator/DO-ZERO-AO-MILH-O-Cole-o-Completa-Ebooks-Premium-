@@ -551,35 +551,164 @@ function Testimonials() {
 // ============================================================
 // PROBLEM
 // ============================================================
-function Problem() {
-  const items = [
-    { t: "Falta de direção financeira", d: "Você trabalha, economiza, mas parece que o dinheiro nunca se transforma em patrimônio real.", icon: <path d="M12 2v20M2 12h20" strokeWidth="1.5" strokeLinecap="round" opacity="0.3" /> },
-    { t: "Falta de estratégia", d: "Decisões impulsivas, investimentos sem método e resultados inconsistentes.", icon: <path d="M4 4l16 16M20 4L4 20" strokeWidth="1.5" strokeLinecap="round" /> },
-    { t: "Conhecimento raso", d: "Conteúdo fragmentado em vídeos rasos que nunca se conectam em um sistema completo.", icon: <><circle cx="12" cy="12" r="9" strokeWidth="1.5" fill="none" /><path d="M8 12h8" strokeWidth="1.5" strokeLinecap="round" /></> },
-    { t: "Excesso de ruído", d: "Gurus prometendo riqueza rápida com promessas irreais que não funcionam no mundo real.", icon: <path d="M3 12h3l3-8 4 16 3-8h5" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /> },
-  ];
+// ============================================================
+// PROBLEM CARD - Card visual melhorado com imagem de fundo
+// ============================================================
+function ProblemCard({ 
+  number, 
+  title, 
+  description, 
+  emoji, 
+  gradientClass,
+  delay 
+}: { 
+  number: string; 
+  title: string; 
+  description: string; 
+  emoji: string;
+  gradientClass: string;
+  delay: number;
+}) {
   return (
-    <section id="problema" className="relative bg-black py-28 lg:py-40">
+    <div className={`reveal reveal-delay-${delay} problem-card group relative rounded-3xl overflow-hidden min-h-[320px] flex flex-col`}>
+      {/* Imagem de fundo / Gradiente */}
+      <div className={`absolute inset-0 ${gradientClass} opacity-20 group-hover:opacity-30 transition-opacity duration-500`} />
+      
+      {/* Efeito de ruído/grain */}
+      <div className="noise" />
+      
+      {/* Conteúdo */}
+      <div className="relative z-10 p-8 flex flex-col h-full">
+        {/* Número grande no fundo */}
+        <div className="absolute -top-4 -right-4 text-[120px] font-display font-bold opacity-5 text-gold-400 select-none pointer-events-none">
+          {number}
+        </div>
+        
+        {/* Emoji grande */}
+        <div className="text-5xl mb-6 transform group-hover:scale-110 transition-transform duration-300">
+          {emoji}
+        </div>
+        
+        {/* Badge */}
+        <div className="inline-flex items-center gap-2 mb-4">
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          <span className="text-[10px] tracking-[0.2em] uppercase text-red-400 font-medium">
+            O Problema
+          </span>
+        </div>
+        
+        {/* Título */}
+        <h3 className="font-display text-xl lg:text-2xl font-semibold tracking-tight text-white mb-3">
+          {title}
+        </h3>
+        
+        {/* Descrição */}
+        <p className="text-sm text-white/60 leading-relaxed flex-1">
+          {description}
+        </p>
+        
+        {/* Linha decorativa */}
+        <div className="mt-6 h-px bg-gradient-to-r from-gold-400/50 via-gold-400/20 to-transparent" />
+      </div>
+      
+      {/* Borda brilhante no hover */}
+      <div className="absolute inset-0 rounded-3xl border border-gold-400/0 group-hover:border-gold-400/30 transition-all duration-500 pointer-events-none" />
+      
+      {/* Brilho no canto */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-gold-400/20 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+    </div>
+  );
+}
+
+// ============================================================
+// PROBLEM SECTION - Seção melhorada com 4 problemas principais
+// ============================================================
+function Problem() {
+  const problems = [
+    {
+      n: "01",
+      emoji: "📉",
+      title: "Falta de Direção Financeira",
+      description: "Você trabalha duro, economiza cada centavo, mas o dinheiro nunca parece se transformar em patrimônio real. Parece que está correndo sem sair do lugar.",
+      gradient: "bg-gradient-to-br from-red-900/50 via-red-800/30 to-transparent",
+    },
+    {
+      n: "02",
+      emoji: "🎯",
+      title: "Falta de Estratégia",
+      description: "Decisões impulsivas, investimentos sem método, resultados inconsistency. Você até tenta, mas falta um plano que realmente funcione.",
+      gradient: "bg-gradient-to-br from-orange-900/50 via-orange-800/30 to-transparent",
+    },
+    {
+      n: "03",
+      emoji: "📚",
+      title: "Conhecimento Raso",
+      description: "Vídeos curtos, dicas soltas, conteúdo fragmentado que nunca se conecta. Você consome muito e aplica pouco. O resultado? Nenhum.",
+      gradient: "bg-gradient-to-br from-yellow-900/50 via-yellow-800/30 to-transparent",
+    },
+    {
+      n: "04",
+      emoji: "🔊",
+      title: "Excesso de Ruído",
+      description: "Gurus prometendo riqueza rápida, fórmulas mágicas, retornos absurdos. Promessas irreais que não funcionam no mundo real — só no vídeos.",
+      gradient: "bg-gradient-to-br from-amber-900/50 via-amber-800/30 to-transparent",
+    },
+  ];
+  
+  return (
+    <section id="problema" className="relative bg-black py-28 lg:py-40 overflow-hidden">
+      {/* Efeito de fundo */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-red-900/20 via-transparent to-transparent blur-[100px]" />
+      </div>
+      
       <div className="max-w-7xl mx-auto px-6 lg:px-10">
-        <div className="max-w-2xl reveal">
-          <span className="text-xs tracking-[0.3em] uppercase text-gold-400">01 · O Diagnóstico</span>
-          <h2 className="mt-4 font-display text-4xl md:text-5xl lg:text-6xl font-light tracking-tight leading-[1.05]">
-            A distância entre onde você está e <span className="italic text-gold-gradient">onde quer chegar</span> não é sorte.
+        {/* Header */}
+        <div className="max-w-3xl mx-auto text-center mb-16 reveal">
+          <div className="inline-flex items-center gap-3 mb-6">
+            <div className="h-px w-12 bg-gradient-to-r from-transparent to-gold-400/50" />
+            <span className="text-xs tracking-[0.3em] uppercase text-gold-400 font-medium">
+              01 · O Diagnóstico
+            </span>
+            <div className="h-px w-12 bg-gradient-to-l from-transparent to-gold-400/50" />
+          </div>
+          
+          <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-light tracking-tight leading-[1.1]">
+            A distância entre onde você está e{" "}
+            <span className="italic text-gold-gradient">
+              onde quer chegar
+            </span>{" "}
+            não é sorte.
           </h2>
-          <p className="mt-6 text-lg text-mist leading-relaxed">
+          
+          <p className="mt-8 text-lg text-white/60 leading-relaxed max-w-2xl mx-auto">
             É método. É clareza. É sistema. E a maioria das pessoas simplesmente nunca teve acesso a um.
           </p>
         </div>
-        <div className="mt-16 grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {items.map((it, i) => (
-            <Spotlight key={i} className={`reveal reveal-delay-${i + 1} rounded-2xl border border-white/10 bg-white/[0.02] p-8 backdrop-blur card-hover`}>
-              <div className="w-10 h-10 rounded-xl border border-white/10 flex items-center justify-center text-gold-400 mb-6">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">{it.icon}</svg>
-              </div>
-              <h3 className="font-medium text-lg tracking-tight">{it.t}</h3>
-              <p className="mt-3 text-sm text-mist leading-relaxed">{it.d}</p>
-            </Spotlight>
+        
+        {/* Grid de problemas - 2x2 em desktop */}
+        <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
+          {problems.map((problem, i) => (
+            <ProblemCard
+              key={problem.n}
+              number={problem.n}
+              title={problem.title}
+              description={problem.description}
+              emoji={problem.emoji}
+              gradientClass={problem.gradient}
+              delay={(i % 4) + 1}
+            />
           ))}
+        </div>
+        
+        {/* CTA sutil */}
+        <div className="mt-16 text-center reveal">
+          <p className="text-white/40 text-sm">
+            E se existisse um caminho claro, testado e comprovado?{" "}
+            <a href="#dentro" className="text-gold-400 hover:text-gold-300 transition-colors">
+              Descubra nos 7 capítulos →
+            </a>
+          </p>
         </div>
       </div>
     </section>
