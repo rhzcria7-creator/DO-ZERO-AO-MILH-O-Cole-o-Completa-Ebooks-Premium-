@@ -93,6 +93,10 @@ export const CHAPTERS: Chapter[] = [
 ];
 
 // ============================================================
-// CTA — link único para checkout
+// CTA — link para checkout via Infinity Pay
+// Substitua pelo link de pagamento gerado no painel da Infinity Pay
 // ============================================================
 export const CHECKOUT_URL = "/checkout";
+
+// URL do checkout da Infinity Pay (substitua pelo seu link real)
+export const INFINITY_PAY_CHECKOUT_URL = "https://checkout.infinitepay.com.br/SEU_LINK_AQUI";

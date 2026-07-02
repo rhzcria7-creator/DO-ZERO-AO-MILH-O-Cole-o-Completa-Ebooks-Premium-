@@ -1153,9 +1153,6 @@ import { lazy, Suspense } from "react";
 
 const SuccessPage = lazy(() => import("./pages/SuccessPage"));
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
-const LoginPage = lazy(() => import("./pages/LoginPage"));
-const RegisterPage = lazy(() => import("./pages/RegisterPage"));
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 
 const PageLoader = () => <div className="min-h-screen bg-black flex items-center justify-center text-gold-400 text-sm tracking-widest uppercase">Carregando...</div>;
 
@@ -1185,15 +1182,6 @@ export default function App() {
   // Roteamento simples com lazy loading
   if (path === "/checkout") {
     return <Suspense fallback={<PageLoader />}><CheckoutPage /></Suspense>;
-  }
-  if (path === "/login") {
-    return <Suspense fallback={<PageLoader />}><LoginPage /></Suspense>;
-  }
-  if (path === "/registrar") {
-    return <Suspense fallback={<PageLoader />}><RegisterPage /></Suspense>;
-  }
-  if (path === "/dashboard") {
-    return <Suspense fallback={<PageLoader />}><DashboardPage /></Suspense>;
   }
   if (path === "/sucesso" || search.includes("session_id") || search.includes("sessionId")) {
     return <Suspense fallback={<PageLoader />}><SuccessPage /></Suspense>;
