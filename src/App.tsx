@@ -1183,7 +1183,7 @@ export default function App() {
   if (path === "/checkout") {
     return <Suspense fallback={<PageLoader />}><CheckoutPage /></Suspense>;
   }
-  if (path === "/sucesso" || search.includes("session_id") || search.includes("sessionId")) {
+  if (path === "/sucesso") {
     return <Suspense fallback={<PageLoader />}><SuccessPage /></Suspense>;
   }
 
