@@ -98,5 +98,9 @@ export const CHAPTERS: Chapter[] = [
 // ============================================================
 export const CHECKOUT_URL = "/checkout";
 
-// URL do checkout da Infinity Pay (substitua pelo seu link real)
-export const INFINITY_PAY_CHECKOUT_URL = "https://checkout.infinitepay.com.br/SEU_LINK_AQUI";
+// URL do checkout da InfinitePay (link real de pagamento)
+export const INFINITY_PAY_CHECKOUT_URL = "https://checkout.infinitepay.io/wequo/bJdrAcknKE";
+
+// Chave usada no sessionStorage para vincular a compra a este navegador.
+// A página /sucesso só aceita retornos cujo order_nsu foi gerado aqui.
+export const ORDER_NSU_STORAGE_KEY = "ip_order_nsu";
